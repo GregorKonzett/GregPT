@@ -15,6 +15,7 @@ tokenizer = Tokenizer()
 
 vocab_size = tokenizer.get_vocab_size()
 
+post_train_data = torch.zeros((1, 1), dtype=torch.long, device=device)
 encoded_text = torch.tensor(tokenizer.encode(text), dtype=torch.long)
 training_length = int(len(encoded_text) * 0.9)
 eval_length = len(encoded_text) - training_length
@@ -25,7 +26,7 @@ eval_data = encoded_text[training_length:]
 gpt = GptModel(vocab_size=vocab_size, device=device)
 params = sum(p.numel() for p in gpt.parameters() if p.requires_grad)
 print(f"Parameters: {params}")
-trainer = GptTrainer(gpt, training_data, eval_data, device)
+trainer = GptTrainer(gpt, training_data, eval_data, post_train_data, device)
 
 iters = 3000
 

@@ -8,9 +8,10 @@ learning_rate = 3e-4
 model_weight_path = "./weights.pt"
 
 class GptTrainer:
-    def __init__(self, gpt: GptModel, data: Tensor, eval_data: Tensor, device):
+    def __init__(self, gpt: GptModel, data: Tensor, eval_data: Tensor, post_train_data: Tensor, device):
         self.device = device
         self.gpt = gpt.to(self.device)
+        self.post_train_data = post_train_data.to(self.device)
         self.training_data = data.to(self.device, dtype=torch.long)
         self.eval_data = eval_data.to(self.device, dtype=torch.long)
 
@@ -73,6 +74,12 @@ class GptTrainer:
         print("Checkpoint restored")
 
         return checkpoint.get("global_step", 0)
+
+    def pre_train(self, iters, load_checkpoint=False):
+        pass
+
+    def post_train(self, iters, load_checkpoint=False):
+        pass
 
     def train(self, iters, load_checkpoint=False):
         print("Training")
