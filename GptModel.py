@@ -2,12 +2,20 @@ from torch import nn
 import torch
 from torch.functional import F
 
+from tokenizer import Tokenizer
+
 dropout = 0.02
-embed_dim = 32
-num_heads = 4
+embed_dim = 384
+num_heads = 6
 head_size = embed_dim // num_heads
 block_count = 6
 block_size = 256
+
+def get_device():
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    else:
+        return torch.device("cpu")
 
 class Head(nn.Module):
     def __init__(self):
@@ -71,14 +79,16 @@ class Block(nn.Module):
         return x
 
 class GptModel(nn.Module):
-    def __init__(self, vocab_size, device):
+    def __init__(self, vocab_size, tokenizer):
         super().__init__()
+        self.device = get_device()
+        self.tokenizer = tokenizer
         self.vocab_size = vocab_size
         self.block_size = block_size
         self.embed_dim = embed_dim
         self.block_count = block_count
-        self.token_embedding_table = nn.Embedding(self.vocab_size, self.embed_dim, device=device)
-        self.pos_embedding_table = nn.Embedding(self.block_size, self.embed_dim, device=device)
+        self.token_embedding_table = nn.Embedding(self.vocab_size, self.embed_dim, device=self.device)
+        self.pos_embedding_table = nn.Embedding(self.block_size, self.embed_dim, device=self.device)
         self.blocks = nn.Sequential(*[Block() for _ in range(self.block_count)])
         self.linear = nn.Linear(self.embed_dim, self.vocab_size)
         self.ln_norm = nn.LayerNorm(self.embed_dim)
@@ -103,14 +113,24 @@ class GptModel(nn.Module):
 
         return logits, loss
 
-    def generate(self, idx, max_output: int):
-        for _ in range(max_output):
-            logits, _ = self(idx)
+    @torch.no_grad()
+    def generate(self, idx):
+        self.eval()
+        for _ in range(block_size):
+            idx_cond = idx[:, -self.block_size:]
+
+            logits, _ = self(idx_cond)
             logits = logits[:, -1, :]
 
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
 
+            next_token = idx_next[0, 0].item()
+            if self.tokenizer.is_eos(next_token):
+                break
+
             idx = torch.cat([idx, idx_next], dim=1)
+
+        self.train()
 
         return idx

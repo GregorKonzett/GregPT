@@ -1,19 +1,19 @@
 import torch
 from torch import Tensor
 import os
-from GptModel import GptModel, block_size
+from GptModel import GptModel, block_size, get_device
 
 batch_size = 32
 learning_rate = 3e-4
+eval_iters = 200
 model_weight_path = "./weights.pt"
 
 class GptTrainer:
-    def __init__(self, gpt: GptModel, data: Tensor, eval_data: Tensor, post_train_data: Tensor, device):
-        self.device = device
+    def __init__(self, gpt: GptModel):
+        self.device = get_device()
         self.gpt = gpt.to(self.device)
-        self.post_train_data = post_train_data.to(self.device)
-        self.training_data = data.to(self.device, dtype=torch.long)
-        self.eval_data = eval_data.to(self.device, dtype=torch.long)
+        self.training_data = torch.zeros((1,1), dtype=torch.long, device=self.device)
+        self.eval_data = torch.zeros((1,1), dtype=torch.long, device=self.device)
 
     def get_batch(self, split: str = ''):
         data = self.training_data if split == 'train' else self.eval_data
@@ -44,7 +44,7 @@ class GptTrainer:
 
         print("Checkpoint saved")
 
-    def restore_checkpoint(self, optimizer):
+    def restore_checkpoint(self, optimizer=None):
         if not os.path.exists(model_weight_path):
             print("No checkpoint found")
             return 0
@@ -75,13 +75,30 @@ class GptTrainer:
 
         return checkpoint.get("global_step", 0)
 
-    def pre_train(self, iters, load_checkpoint=False):
-        pass
+    @torch.no_grad()
+    def estimate_loss(self):
+        out = {}
+        self.gpt.eval()
+        for split in ['train', 'val']:
+            losses = torch.zeros(eval_iters)
+            for k in range(eval_iters):
+                X, Y = self.get_batch(split)
+                logits, loss = self.gpt(X, Y)
+                losses[k] = loss.item()
+            out[split] = losses.mean()
+        self.gpt.train()
+        return out
+
+    def pre_train(self, iters, training_data: Tensor, eval_data: Tensor, load_checkpoint=False):
+        print(f"Pre-training with {iters} iterations")
+        self.training_data = training_data.to(self.device, dtype=torch.long)
+        self.eval_data = eval_data.to(self.device, dtype=torch.long)
+        self.__train(iters, load_checkpoint)
 
     def post_train(self, iters, load_checkpoint=False):
         pass
 
-    def train(self, iters, load_checkpoint=False):
+    def __train(self, iters, load_checkpoint=False):
         print("Training")
 
         optimizer = torch.optim.Adam(self.gpt.parameters(), lr=learning_rate)
@@ -103,4 +120,5 @@ class GptTrainer:
 
             if global_step % 100 == 0:
                 self.save_checkpoint(global_step, optimizer, loss)
-                print("Iter:", iter, "Loss:", loss)
+                losses = self.estimate_loss()
+                print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")

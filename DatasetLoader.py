@@ -1,0 +1,75 @@
+import os
+import re
+
+from datasets import load_dataset
+from tokenizer import Tokenizer
+
+class DatasetLoader:
+    def __init__(self, path, name):
+        self.path = path
+        self.name = name
+        self.file_path = "./data/" + self.name
+
+    def __remove_equals(self, line: str) -> str:
+        newline = ""
+        if line.endswith("\r\n"):
+            line = line[:-2]
+            newline = "\r\n"
+        elif line.endswith("\n"):
+            line = line[:-1]
+            newline = "\n"
+
+        line = line.strip()
+        line = re.sub(r"^(?:= )+", "", line)
+        line = re.sub(r"(?: =)+$", "", line)
+
+        return line.strip() + newline
+
+    def __clean_artifacts(self, line: str) -> str:
+        line = re.sub(r"\s*@-@\s*", "-", line)
+        line = re.sub(r"\s*@,@\s*", ",", line)
+        line = re.sub(r"\s*@\.@\s*", ".", line)
+        return line
+
+    def __insert_eos(self, text) -> str:
+        out = []
+        skip = True
+
+        for line in text:
+            stripped_line = line.strip()
+            is_title = (stripped_line.startswith("= ")
+                        and stripped_line.endswith(" =")
+                        and not stripped_line.endswith(" = ="))
+
+            is_subtitle = (stripped_line.startswith("= = ") and stripped_line.endswith(" = ="))
+
+            if is_title and not skip:
+                out.append(Tokenizer.eos_token_str)
+            elif is_title:
+                skip = False
+
+            if is_title or is_subtitle:
+                line = self.__remove_equals(line)
+
+            out.append(self.__clean_artifacts(line))
+
+        # Add one after the last article
+        out.append(Tokenizer.eos_token_str)
+
+        return '\n'.join(out)
+
+    def get_train_data(self) -> str:
+        if os.path.exists(self.file_path):
+            print("Found data locally")
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                return f.read()
+
+        print(f"Downloading {self.name} dataset from {self.path}")
+        ds = load_dataset(self.path, self.name)
+        text = self.__insert_eos(ds["train"]["text"])
+
+        with open(self.file_path, "w", encoding="utf-8") as f:
+            f.write(text)
+            print("Saved data to file")
+
+        return text
