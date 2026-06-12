@@ -1,14 +1,14 @@
-import os
 import re
 
 from datasets import load_dataset
+
 from tokenizer import Tokenizer
+
 
 class DatasetLoader:
     def __init__(self, path, name):
         self.path = path
         self.name = name
-        self.file_path = "./data/" + self.name
 
     def __remove_equals(self, line: str) -> str:
         newline = ""
@@ -59,17 +59,14 @@ class DatasetLoader:
         return '\n'.join(out)
 
     def get_train_data(self) -> str:
-        if os.path.exists(self.file_path):
-            print("Found data locally")
-            with open(self.file_path, "r", encoding="utf-8") as f:
-                return f.read()
+        pass
 
-        print(f"Downloading {self.name} dataset from {self.path}")
+    def get_val_data(self) -> str:
+        pass
+
+    def download_data(self, split) -> str:
+        print(f"Downloading {split} {self.name} dataset from {self.path}")
         ds = load_dataset(self.path, self.name)
-        text = self.__insert_eos(ds["train"]["text"])
-
-        with open(self.file_path, "w", encoding="utf-8") as f:
-            f.write(text)
-            print("Saved data to file")
+        text = self.__insert_eos(ds[split]["text"])
 
         return text

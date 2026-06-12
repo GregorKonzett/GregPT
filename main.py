@@ -1,4 +1,4 @@
-from DatasetLoader import DatasetLoader
+from dataset.GCPStorageDatasetLoader import GCPStorageDatasetLoader
 from GptModel import GptModel, get_device
 from GptTrainer import GptTrainer
 import torch
@@ -17,13 +17,12 @@ try:
 
     for currentArgument, currentValue in arguments:
         if currentArgument == "--pre":
-            dataset_loader = DatasetLoader("Salesforce/wikitext", "wikitext-103-raw-v1")
+            dataset_loader = GCPStorageDatasetLoader("Salesforce/wikitext", "wikitext-103-raw-v1")
             iters = int(currentValue)
-            data = dataset_loader.get_train_data()
-            training_data = torch.tensor(tokenizer.encode(data), dtype=torch.long)
-            training_length = int(len(training_data) * 0.9)
-            print(f"Pre-training with input: {len(data)} {data[:100]}")
-            trainer.pre_train(iters, training_data[:training_length], training_data[training_length:], True)
+            training_data = torch.tensor(tokenizer.encode(dataset_loader.get_train_data()), dtype=torch.long)
+            eval_data = torch.tensor(tokenizer.encode(dataset_loader.get_val_data()), dtype=torch.long)
+            print(f"Pre-training with input: {len(training_data)} {training_data[:100]}")
+            trainer.pre_train(iters, training_data, eval_data, True)
         elif currentArgument == "--post":
             iters = int(currentValue)
             print(f"Post training: {iters}")
