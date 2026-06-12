@@ -5,9 +5,12 @@ import torch
 from tokenizer import Tokenizer
 import getopt, sys
 
+from weights.GCPStorageWeightLoader import GCPStorageWeightLoader
+
 tokenizer = Tokenizer()
+weight_loader = GCPStorageWeightLoader()
 gpt = GptModel(vocab_size=tokenizer.get_vocab_size(), tokenizer=tokenizer)
-trainer = GptTrainer(gpt)
+trainer = GptTrainer(gpt, weight_loader)
 
 args = sys.argv[1:]
 long_options = ["pre=", "post=", "infer="]
@@ -29,7 +32,7 @@ try:
         elif currentArgument == "--infer":
             query = currentValue
             print(f"Inference with input: {query}")
-            trainer.restore_checkpoint()
+            weight_loader.load_checkpoint(gpt)
             encoded_query = torch.tensor([tokenizer.encode(query)], dtype=torch.long, device=get_device())
             out = gpt.generate(encoded_query)
             print("Output:")
