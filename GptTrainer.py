@@ -21,6 +21,8 @@ class GptTrainer:
         batches = torch.randint(data_len - block_size, (batch_size,))
         x = torch.stack([data[batch:batch+block_size] for batch in batches])
         y = torch.stack([data[batch + 1:batch+block_size+1] for batch in batches])
+        x = x.to(self.device, dtype=torch.long)
+        y = y.to(self.device, dtype=torch.long)
         return x, y
 
     @torch.no_grad()
@@ -39,8 +41,8 @@ class GptTrainer:
 
     def pre_train(self, iters, training_data: Tensor, eval_data: Tensor, load_checkpoint=False):
         print(f"Pre-training with {iters} iterations")
-        self.training_data = training_data.to(self.device, dtype=torch.long)
-        self.eval_data = eval_data.to(self.device, dtype=torch.long)
+        self.training_data = training_data # training_data.to(self.device, dtype=torch.long)
+        self.eval_data = eval_data # eval_data.to(self.device, dtype=torch.long)
         self.__train(iters, load_checkpoint)
 
     def post_train(self, iters, load_checkpoint=False):

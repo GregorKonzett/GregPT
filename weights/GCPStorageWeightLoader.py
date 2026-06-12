@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 import torch
 from google.cloud import storage
@@ -12,7 +13,8 @@ class GCPStorageWeightLoader(WeightLoader):
         self.storage_client = storage.Client()
         self.bucket_name = "gregpt-weights"
         self.blob_name = "weights.pt"
-        self.tmp_file = "./tmp_weight.pt"
+        self.tmp_file = os.path.join(tempfile.gettempdir(), "gregpt_weights.pt")
+        self.model_weight_path = self.tmp_file
         self.bucket = self.storage_client.bucket(self.bucket_name)
 
         if not self.bucket.exists():
@@ -34,16 +36,23 @@ class GCPStorageWeightLoader(WeightLoader):
         print(f"Loading weights from checkpoint {self.bucket_name}/{self.blob_name}")
         self.__load_blob()
 
-        checkpoint = torch.load(
-            self.tmp_file,
-            weights_only=True,
-            map_location=self.device,
-        )
-
-        # Delete tmp file again
-        os.remove(self.tmp_file)
+        try:
+            checkpoint = torch.load(
+                self.tmp_file,
+                weights_only=True,
+                map_location=self.device,
+            )
+        finally:
+            if os.path.exists(self.tmp_file):
+                os.remove(self.tmp_file)
 
         return self.load(gpt, optimizer, checkpoint)
 
     def store_checkpoint(self, state_dict, global_step, optimizer, loss=None):
-        self.store(state_dict, global_step, optimizer, loss)
+        try:
+            self.store(state_dict, global_step, optimizer, loss)
+            blob = self.bucket.blob(self.blob_name)
+            blob.upload_from_filename(self.tmp_file)
+        finally:
+            if os.path.exists(self.tmp_file):
+                os.remove(self.tmp_file)

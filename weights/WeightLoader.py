@@ -17,7 +17,7 @@ class WeightLoader:
     def store(self, state_dict, global_step, optimizer, loss=None):
         checkpoint = {
             "global_step": global_step,
-            "model_state_dict": state_dict(),
+            "model_state_dict": state_dict,
             "optimizer_state_dict": optimizer.state_dict(),
             "rng_state": torch.get_rng_state(),
         }
