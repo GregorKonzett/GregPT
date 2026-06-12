@@ -1,10 +1,13 @@
 import os
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 
 import torch
 from google.cloud import storage
 
 from weights.WeightLoader import WeightLoader
+
+_upload_executor = ThreadPoolExecutor(max_workers=1)
 
 class GCPStorageWeightLoader(WeightLoader):
     def __init__(self):
@@ -49,10 +52,15 @@ class GCPStorageWeightLoader(WeightLoader):
         return self.load(gpt, optimizer, checkpoint)
 
     def store_checkpoint(self, state_dict, global_step, optimizer, loss=None):
-        try:
-            self.store(state_dict, global_step, optimizer, loss)
-            blob = self.bucket.blob(self.blob_name)
-            blob.upload_from_filename(self.tmp_file)
-        finally:
-            if os.path.exists(self.tmp_file):
-                os.remove(self.tmp_file)
+        self.store(state_dict, global_step, optimizer, loss)
+        blob = self.bucket.blob(self.blob_name)
+
+        def upload_file():
+            try:
+                blob.upload_from_filename(self.tmp_file)
+                print(f"Done uploading {global_step}")
+            finally:
+                if os.path.exists(self.tmp_file):
+                    os.remove(self.tmp_file)
+
+        _upload_executor.submit(upload_file)
