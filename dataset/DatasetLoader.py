@@ -30,6 +30,8 @@ class DatasetLoader:
         line = re.sub(r"\s*@,@\s*", ",", line)
         line = re.sub(r"\s*@\.@\s*", ".", line)
         line = line.strip()
+        line = re.sub(r"\b([A-Za-z0-9]+)\s+'(s|re|ve|ll|d|m|t)\b", r"\1'\2", line)
+        line = re.sub(r"\b([A-Za-z]+)\s+n't\b", r"\1n't", line)
         line = re.sub(r"\s+([,.;:!?%])", r"\1", line)
         line = re.sub(r"\s+([\)\]\}])", r"\1", line)
         line = re.sub(r"([\(\[\{])\s+", r"\1", line)
