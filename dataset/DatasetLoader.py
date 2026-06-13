@@ -29,6 +29,12 @@ class DatasetLoader:
         line = re.sub(r"\s*@-@\s*", "-", line)
         line = re.sub(r"\s*@,@\s*", ",", line)
         line = re.sub(r"\s*@\.@\s*", ".", line)
+        line = line.strip()
+        line = re.sub(r"\s+([,.;:!?%])", r"\1", line)
+        line = re.sub(r"\s+([\)\]\}])", r"\1", line)
+        line = re.sub(r"([\(\[\{])\s+", r"\1", line)
+        line = line.replace("`` ", '"').replace(" ''", '"')
+
         return line
 
     def __insert_eos(self, text) -> str:
@@ -51,7 +57,10 @@ class DatasetLoader:
             if is_title or is_subtitle:
                 line = self.__remove_equals(line)
 
-            out.append(self.__clean_artifacts(line))
+            cleaned = self.__clean_artifacts(line)
+
+            if cleaned:
+                out.append(cleaned)
 
         # Add one after the last article
         out.append(Tokenizer.eos_token_str)
