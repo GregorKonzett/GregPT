@@ -20,12 +20,12 @@ try:
 
     for currentArgument, currentValue in arguments:
         if currentArgument == "--pre":
-            dataset_loader = GCPStorageDatasetLoader("Salesforce/wikitext", "wikitext-103-raw-v1")
+            dataset_loader = GCPStorageDatasetLoader("HuggingFaceFW/fineweb", "CC-MAIN-2025-26")
             iters = int(currentValue)
-            training_data = torch.tensor(tokenizer.encode(dataset_loader.get_train_data("pre")), dtype=torch.long)
-            eval_data = torch.tensor(tokenizer.encode(dataset_loader.get_val_data("pre", "validation")), dtype=torch.long)
-            print(f"Pre-training with input: {len(training_data)} {training_data[:100]}")
-            trainer.pre_train(iters, training_data, eval_data, True)
+            print("Pre-training with streaming input")
+            data = dataset_loader.streaming_load_data("train")
+            trainer.pre_train(iters, data, True)
+            # trainer.pre_train(iters, dataset_loader.streaming_load_data("train"), True)
         elif currentArgument == "--post":
             dataset_loader = GCPStorageDatasetLoader("HuggingFaceTB/smol-smoltalk")
             iters = int(currentValue)

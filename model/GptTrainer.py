@@ -15,17 +15,27 @@ class GptTrainer:
         self.tokenizer = tokenizer
         self.gpt = gpt.to(self.device)
         self.weight_loader = weight_loader
-        self.training_data = torch.zeros((1,1), dtype=torch.long, device=self.device)
-        self.eval_data = torch.zeros((1,1), dtype=torch.long, device=self.device)
+        self.training_data = None
+        self.eval_data = None
+        self.buffer = []
 
-    def get_batch(self, split: str = ''):
-        data = self.training_data if split == 'train' else self.eval_data
-        data_len = len(data)
-        batches = torch.randint(data_len - block_size, (batch_size,))
-        x = torch.stack([data[batch:batch+block_size] for batch in batches])
-        y = torch.stack([data[batch + 1:batch+block_size+1] for batch in batches])
+    def get_batch(self):
+        data = self.training_data
+        needed_tokens = batch_size * block_size + 1
+
+        while len(self.buffer) < needed_tokens:
+            next_chunk = next(data)["text"] + '\n' + TikTokenTokenizer.eos_token_str
+            enc_chunk = self.tokenizer.encode(next_chunk)
+            self.buffer.extend(enc_chunk)
+
+        chunks = self.buffer[:needed_tokens]
+        chunk_tensor = torch.tensor(chunks, dtype=torch.long)
+
+        x = torch.stack([chunk_tensor[batch:batch+block_size] for batch in range(0, batch_size * block_size, block_size)])
+        y = torch.stack([chunk_tensor[batch + 1:batch+block_size+1] for batch in range(0, batch_size * block_size, block_size)])
         x = x.to(self.device, dtype=torch.long)
         y = y.to(self.device, dtype=torch.long)
+        self.buffer = self.buffer[needed_tokens - 1:]
         return x, y
 
     def get_post_batch(self, split: str = ''):
@@ -33,9 +43,9 @@ class GptTrainer:
         if len(data) == 0:
             raise ValueError(f"No {split} post-training data loaded")
 
-        system_token = self.tokenizer.encode(Tokenizer.system_token_str)[0]
-        user_token = self.tokenizer.encode(Tokenizer.user_token_str)[0]
-        assistant_token = self.tokenizer.encode(Tokenizer.assistant_token_str)[0]
+        system_token = self.tokenizer.encode(TikTokenTokenizer.system_token_str)[0]
+        user_token = self.tokenizer.encode(TikTokenTokenizer.user_token_str)[0]
+        assistant_token = self.tokenizer.encode(TikTokenTokenizer.assistant_token_str)[0]
         newline_tokens = set(self.tokenizer.encode("\n"))
         pad_token = self.tokenizer.get_eos_token()
         role_tokens = {system_token, user_token, assistant_token}
@@ -113,9 +123,11 @@ class GptTrainer:
             losses = torch.zeros(eval_iters)
             for k in range(eval_iters):
                 if phase == 'pre':
-                    X, Y = self.get_batch(split)
+                    X, Y = self.get_batch()
                 elif phase == 'post':
                     X, Y = self.get_post_batch(split)
+                else:
+                    raise ValueError(f"phase should be pre or post")
 
                 logits, loss = self.gpt(X, Y)
                 losses[k] = loss.item()
@@ -123,11 +135,10 @@ class GptTrainer:
         self.gpt.train()
         return out
 
-    def pre_train(self, iters, training_data: Tensor, eval_data: Tensor, load_checkpoint: bool = False):
+    def pre_train(self, iters, training_data, load_checkpoint: bool = False):
         print(f"Pre-training with {iters} iterations")
 
-        self.training_data = training_data  # training_data.to(self.device, dtype=torch.long)
-        self.eval_data = eval_data  # eval_data.to(self.device, dtype=torch.long)
+        self.training_data = iter(training_data)
 
         self.__train("pre", iters, load_checkpoint)
 
@@ -149,7 +160,7 @@ class GptTrainer:
 
         for iter in range(iters):
             if phase == 'pre':
-                xb, yb = self.get_batch("train")
+                xb, yb = self.get_batch()
             elif phase == 'post':
                 xb, yb = self.get_post_batch("train")
             else:
@@ -165,5 +176,9 @@ class GptTrainer:
 
             if global_step % 100 == 0:
                 self.weight_loader.store_checkpoint(self.gpt.state_dict(), global_step, optimizer, loss)
-                losses = self.estimate_loss(phase)
-                print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+
+                if phase == 'pre':
+                    print(f"step {iter}: train loss {loss.item():.4f}")
+                else:
+                    losses = self.estimate_loss(phase)
+                    print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")

@@ -1,6 +1,7 @@
 import re
+from typing import Iterable
 
-from datasets import load_dataset
+from datasets import load_dataset, IterableDataset, IterableDatasetDict
 
 from tokenizer.TikTokenTokenizer import TikTokenTokenizer
 
@@ -111,3 +112,8 @@ class DatasetLoader:
         text = self.__prepare_data(phase, ds[split])
 
         return text
+
+    def streaming_load_data(self, split) -> IterableDatasetDict | IterableDataset:
+        print(f"Streaming {split} {self.name} dataset from {self.path}")
+        ds = load_dataset(self.path, name=self.name, split=split, streaming=True)
+        return ds
