@@ -1,7 +1,7 @@
 import tiktoken
 
 
-class Tokenizer:
+class TikTokenTokenizer:
     eos_token_str = "<|g_eos|>"
     system_token_str = "<|system|>"
     user_token_str = "<|user|>"

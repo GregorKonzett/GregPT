@@ -1,8 +1,8 @@
 import torch
 from torch.functional import F
 from torch import Tensor
-from GptModel import GptModel, block_size, get_device
-from tokenizer import Tokenizer
+from model.GptModel import GptModel, block_size, get_device
+from tokenizer.TikTokenTokenizer import TikTokenTokenizer
 from weights.WeightLoader import WeightLoader
 
 batch_size = 32
@@ -10,7 +10,7 @@ learning_rate = 3e-4
 eval_iters = 200
 
 class GptTrainer:
-    def __init__(self, gpt: GptModel, weight_loader: WeightLoader, tokenizer: Tokenizer):
+    def __init__(self, gpt: GptModel, weight_loader: WeightLoader, tokenizer: TikTokenTokenizer):
         self.device = get_device()
         self.tokenizer = tokenizer
         self.gpt = gpt.to(self.device)

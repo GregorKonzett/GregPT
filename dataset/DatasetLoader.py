@@ -2,7 +2,7 @@ import re
 
 from datasets import load_dataset
 
-from tokenizer import Tokenizer
+from tokenizer.TikTokenTokenizer import TikTokenTokenizer
 
 
 class DatasetLoader:
@@ -52,7 +52,7 @@ class DatasetLoader:
             is_subtitle = (stripped_line.startswith("= = ") and stripped_line.endswith(" = ="))
 
             if is_title and not skip:
-                out.append(Tokenizer.eos_token_str)
+                out.append(TikTokenTokenizer.eos_token_str)
             elif is_title:
                 skip = False
 
@@ -65,7 +65,7 @@ class DatasetLoader:
                 out.append(cleaned)
 
         # Add one after the last article
-        out.append(Tokenizer.eos_token_str)
+        out.append(TikTokenTokenizer.eos_token_str)
 
         return '\n'.join(out)
 
@@ -77,15 +77,15 @@ class DatasetLoader:
 
             for turn in chat:
                 if turn["role"] == "system":
-                    full_out += Tokenizer.system_token_str  + '\n'
+                    full_out += TikTokenTokenizer.system_token_str + '\n'
                 elif turn["role"] == "user":
-                    full_out += Tokenizer.user_token_str  + '\n'
+                    full_out += TikTokenTokenizer.user_token_str + '\n'
                 else:
-                    full_out += Tokenizer.assistant_token_str  + '\n'
+                    full_out += TikTokenTokenizer.assistant_token_str + '\n'
 
                 full_out += turn["content"] + '\n'
 
-            full_out += Tokenizer.eos_token_str
+            full_out += TikTokenTokenizer.eos_token_str
 
             out.append(full_out)
 

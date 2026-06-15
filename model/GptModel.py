@@ -2,9 +2,10 @@ from torch import nn
 import torch
 from torch.functional import F
 
-from tokenizer import Tokenizer
+from tokenizer.TikTokenTokenizer import TikTokenTokenizer
 
 dropout = 0.02
+dropout1 = 0.02
 embed_dim = 384
 num_heads = 6
 head_size = embed_dim // num_heads
@@ -19,39 +20,60 @@ def get_device():
     else:
         return torch.device("cpu")
 
-class Head(nn.Module):
+class MultiHeadAttention(nn.Module):
     def __init__(self):
         super().__init__()
-        self.key = nn.Linear(embed_dim, head_size, bias=False)
-        self.value = nn.Linear(embed_dim, head_size, bias=False)
-        self.query = nn.Linear(embed_dim, head_size, bias=False)
+        self.ks = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.vs = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.qs = nn.Linear(embed_dim, embed_dim, bias=False)
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+
+        self.proj = nn.Linear(head_size * num_heads, embed_dim)
         self.dropout = nn.Dropout(dropout)
+        self.dropout1 = nn.Dropout(dropout)
 
-    def forward(self, idx):
-        B, T, C = idx.shape
-        k = self.key(idx)
-        v = self.value(idx)
-        q = self.query(idx)
+    def apply_rope(self, x):
+        B, H, T, hs = x.shape
 
-        wei = q @ k.transpose(-2, -1) * k.shape[-1] ** -0.5
+        pos = torch.arange(T, device=x.device)
+        dim = torch.arange(0, hs, 2, device=x.device)
+
+        inv_freq = 1.0 / (10000 ** (dim.float() / hs))
+        freqs = torch.outer(pos.float(), inv_freq)  # (T, hs/2)
+
+        cos = freqs.cos()[None, None, :, :]  # (1, 1, T, hs/2)
+        sin = freqs.sin()[None, None, :, :]  # (1, 1, T, hs/2)
+
+        x_even = x[..., 0::2]
+        x_odd = x[..., 1::2]
+
+        x_rotated = torch.stack(
+            [x_even * cos - x_odd * sin,
+             x_even * sin + x_odd * cos],
+            dim=-1
+        )
+
+        return x_rotated.flatten(-2)
+
+    def forward(self, x):
+        B, T, C = x.shape
+
+        ks = self.ks(x).view(B, T, num_heads, head_size).transpose(1, 2)
+        vs = self.vs(x).view(B, T, num_heads, head_size).transpose(1, 2)
+        qs = self.qs(x).view(B, T, num_heads, head_size).transpose(1, 2)
+
+        qs = self.apply_rope(qs)
+        ks = self.apply_rope(ks)
+
+        wei = qs @ ks.transpose(-2, -1) * ks.shape[-1] ** -0.5
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wei = F.softmax(wei, dim=-1)
         wei = self.dropout(wei)
 
-        out = wei @ v
-        return out
+        out = wei @ vs
+        out = out.transpose(1, 2).contiguous().view(B, T, C)
 
-class MultiHeadAttention(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.heads = nn.ModuleList([Head() for _ in range(num_heads)])
-        self.proj = nn.Linear(head_size * num_heads, embed_dim)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, idx):
-        out = torch.cat([h(idx) for h in self.heads], dim=-1)
-        out = self.dropout(self.proj(out))
+        out = self.dropout1(self.proj(out))
         return out
 
 class FeedForward(nn.Module):
@@ -81,7 +103,7 @@ class Block(nn.Module):
         return x
 
 class GptModel(nn.Module):
-    def __init__(self, vocab_size, tokenizer):
+    def __init__(self, vocab_size, tokenizer: TikTokenTokenizer):
         super().__init__()
         self.device = get_device()
         self.tokenizer = tokenizer
@@ -90,7 +112,6 @@ class GptModel(nn.Module):
         self.embed_dim = embed_dim
         self.block_count = block_count
         self.token_embedding_table = nn.Embedding(self.vocab_size, self.embed_dim, device=self.device)
-        self.pos_embedding_table = nn.Embedding(self.block_size, self.embed_dim, device=self.device)
         self.blocks = nn.Sequential(*[Block() for _ in range(self.block_count)])
         self.linear = nn.Linear(self.embed_dim, self.vocab_size)
         self.ln_norm = nn.LayerNorm(self.embed_dim)
@@ -99,8 +120,6 @@ class GptModel(nn.Module):
         B, T = x.shape
 
         x = self.token_embedding_table(x)
-        pos = self.pos_embedding_table(torch.arange(T, device=x.device))
-        x = x + pos
         x = self.blocks(x)
         x = self.ln_norm(x)
         logits = self.linear(x)

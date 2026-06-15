@@ -1,6 +1,6 @@
 import torch
 
-from GptModel import GptModel, get_device
+from model.GptModel import GptModel, get_device
 
 
 class WeightLoader:

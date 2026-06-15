@@ -1,7 +1,6 @@
 from google.cloud import storage
 
 from dataset.DatasetLoader import DatasetLoader
-from tokenizer import Tokenizer
 
 
 class GCPStorageDatasetLoader(DatasetLoader):
