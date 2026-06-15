@@ -5,7 +5,7 @@ from datasets import load_dataset
 from dataset.DatasetLoader import DatasetLoader
 
 class FsDatasetLoader(DatasetLoader):
-    def __init__(self, path, name):
+    def __init__(self, path, name = None):
         super().__init__(path, name)
 
         self.file_path = "./data/" + self.name
@@ -31,8 +31,8 @@ class FsDatasetLoader(DatasetLoader):
 
         return text
 
-    def get_train_data(self) -> str:
+    def get_train_data(self, phase) -> str:
         return self.get_data("train")
 
-    def get_val_data(self) -> str:
-        return self.get_data("validation")
+    def get_val_data(self, phase, split) -> str:
+        return self.get_data(split)

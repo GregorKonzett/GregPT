@@ -1,13 +1,14 @@
 from google.cloud import storage
 
 from dataset.DatasetLoader import DatasetLoader
+from tokenizer import Tokenizer
 
 
 class GCPStorageDatasetLoader(DatasetLoader):
-    def __init__(self, path, name):
+    def __init__(self, path, name = None):
         super().__init__(path, name)
 
-        self.file_blob = self.name
+        self.file_blob = self.name if self.name else self.path.split("/")[-1]
         self.train_blob = self.file_blob + "train"
         self.val_blob = self.file_blob + "val"
 
@@ -46,17 +47,17 @@ class GCPStorageDatasetLoader(DatasetLoader):
 
         return blob.exists()
 
-    def __get_data(self, split) -> str:
+    def __get_data(self, phase, split) -> str:
         if self.__blob_exists(split):
             return self.__get_stored_data(split)
 
-        text = self.download_data(split)
+        text = self.download_data(phase, split)
 
         self.__write_data(split, text)
         return text
 
-    def get_train_data(self) -> str:
-        return self.__get_data("train")
+    def get_train_data(self, phase) -> str:
+        return self.__get_data(phase, "train")
 
-    def get_val_data(self) -> str:
-        return self.__get_data("validation")
+    def get_val_data(self, phase, split) -> str:
+        return self.__get_data(phase, split)

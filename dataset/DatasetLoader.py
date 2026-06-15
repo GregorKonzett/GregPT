@@ -6,7 +6,7 @@ from tokenizer import Tokenizer
 
 
 class DatasetLoader:
-    def __init__(self, path, name):
+    def __init__(self, path, name = None):
         self.path = path
         self.name = name
 
@@ -39,7 +39,7 @@ class DatasetLoader:
 
         return line
 
-    def __insert_eos(self, text) -> str:
+    def __prepare_pre_data(self, text) -> str:
         out = []
         skip = True
 
@@ -69,15 +69,45 @@ class DatasetLoader:
 
         return '\n'.join(out)
 
-    def get_train_data(self) -> str:
+    def __prepare_post_data(self, content) -> str:
+        out = []
+
+        for chat in content:
+            full_out = ""
+
+            for turn in chat:
+                if turn["role"] == "system":
+                    full_out += Tokenizer.system_token_str  + '\n'
+                elif turn["role"] == "user":
+                    full_out += Tokenizer.user_token_str  + '\n'
+                else:
+                    full_out += Tokenizer.assistant_token_str  + '\n'
+
+                full_out += turn["content"] + '\n'
+
+            full_out += Tokenizer.eos_token_str
+
+            out.append(full_out)
+
+        return '\n'.join(out)
+
+    def __prepare_data(self, phase, data) -> str:
+        if phase == "pre":
+            return self.__prepare_pre_data(data[["text"]])
+        elif phase == "post":
+            return self.__prepare_post_data(data["messages"])
+        else:
+            raise ValueError(f"Unknown phase: {phase}")
+
+    def get_train_data(self, phase) -> str:
         pass
 
-    def get_val_data(self) -> str:
+    def get_val_data(self, phase, split) -> str:
         pass
 
-    def download_data(self, split) -> str:
+    def download_data(self, phase, split) -> str:
         print(f"Downloading {split} {self.name} dataset from {self.path}")
         ds = load_dataset(self.path, self.name)
-        text = self.__insert_eos(ds[split]["text"])
+        text = self.__prepare_data(phase, ds[split])
 
         return text

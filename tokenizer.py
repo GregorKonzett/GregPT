@@ -6,6 +6,7 @@ class Tokenizer:
     system_token_str = "<|system|>"
     user_token_str = "<|user|>"
     assistant_token_str = "<|assistant|>"
+    end_of_text_str = "<|endoftext|>"
 
     special_token_strs = {
         eos_token_str,
@@ -35,7 +36,14 @@ class Tokenizer:
         assert self.enc.decode(self.enc.encode("hello world")) == "hello world"
 
     def encode(self, text):
-        return self.enc.encode(text, allowed_special=self.special_token_strs)
+        return self.enc.encode(
+            text,
+            allowed_special=self.special_token_strs,
+            disallowed_special=self.enc.special_tokens_set - self.special_token_strs - {self.end_of_text_str}
+        )
+
+    def get_eos_token(self):
+        return self.eos_token
 
     def is_eos(self, token: int) -> bool:
         return token == self.eos_token
