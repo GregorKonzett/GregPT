@@ -12,7 +12,7 @@ class FsDatasetLoader(DatasetLoader):
         self.train_path = self.file_path + "train.txt"
         self.val_path = self.file_path + "val.txt"
 
-    def get_data(self, split: str) -> str:
+    def get_data(self, phase: str, split: str) -> str:
         if split == "train":
             file_path = self.train_path
         else:
@@ -23,7 +23,7 @@ class FsDatasetLoader(DatasetLoader):
             with open(file_path, "r", encoding="utf-8") as f:
                 return f.read()
 
-        text = self.download_data(split)
+        text = self.download_data(phase, split)
 
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(text)
@@ -32,7 +32,7 @@ class FsDatasetLoader(DatasetLoader):
         return text
 
     def get_train_data(self, phase) -> str:
-        return self.get_data("train")
+        return self.get_data(phase, "train")
 
     def get_val_data(self, phase, split) -> str:
-        return self.get_data(split)
+        return self.get_data(phase, split)
