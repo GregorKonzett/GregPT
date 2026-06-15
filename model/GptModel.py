@@ -6,10 +6,10 @@ from tokenizer.TikTokenTokenizer import TikTokenTokenizer
 
 dropout = 0.02
 dropout1 = 0.02
-embed_dim = 384
-num_heads = 6
+embed_dim = 512
+num_heads = 8
 head_size = embed_dim // num_heads
-block_count = 6
+block_count = 8
 block_size = 256
 
 def get_device():
