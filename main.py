@@ -11,6 +11,8 @@ tokenizer = TikTokenTokenizer()
 weight_loader = GCPStorageWeightLoader()
 gpt = GptModel(vocab_size=tokenizer.get_vocab_size(), tokenizer=tokenizer)
 trainer = GptTrainer(gpt, weight_loader, tokenizer)
+pytorch_total_params = sum(p.numel() for p in gpt.parameters())
+print(f"Total number of parameters: {pytorch_total_params}")
 
 args = sys.argv[1:]
 long_options = ["pre=", "post=", "infer="]
@@ -48,7 +50,7 @@ try:
         elif currentArgument == "--infer":
             query = currentValue
             print(f"Inference with input: {query}")
-            query = TikTokenTokenizer.user_token_str + "\n" + query + "\n" + TikTokenTokenizer.assistant_token_str + "\n"
+            # query = TikTokenTokenizer.user_token_str + "\n" + query + "\n" + TikTokenTokenizer.assistant_token_str + "\n"
             weight_loader.load_checkpoint(gpt)
             encoded_query = torch.tensor([tokenizer.encode(query)], dtype=torch.long, device=get_device())
             out = gpt.generate(encoded_query)

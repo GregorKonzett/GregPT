@@ -48,7 +48,9 @@ class WeightLoader:
             torch.mps.set_rng_state(checkpoint["mps_rng_state"].cpu())
 
         if torch.cuda.is_available() and "cuda_rng_state_all" in checkpoint:
-            torch.cuda.set_rng_state_all(checkpoint["cuda_rng_state_all"])
+            torch.cuda.set_rng_state_all([
+                state.cpu() for state in checkpoint["cuda_rng_state_all"]
+            ])
 
         gpt.train()
 
