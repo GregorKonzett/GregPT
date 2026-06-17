@@ -26,8 +26,8 @@ try:
             iters = int(currentValue)
             print("Pre-training with streaming input")
             data = dataset_loader.streaming_load_data("train")
+            data = data.skip(400000)
             trainer.pre_train(iters, data, True)
-            # trainer.pre_train(iters, dataset_loader.streaming_load_data("train"), True)
         elif currentArgument == "--post":
             dataset_loader = GCPStorageDatasetLoader("HuggingFaceTB/smol-smoltalk")
             iters = int(currentValue)
@@ -55,6 +55,6 @@ try:
             encoded_query = torch.tensor([tokenizer.encode(query)], dtype=torch.long, device=get_device())
             out = gpt.generate(encoded_query)
             print("Output:")
-            print(tokenizer.decode(out[0].cpu().tolist()))
+            print(tokenizer.decode(out[0].cpu().tolist()).strip())
 except getopt.error as err:
     print(str(err))
