@@ -174,7 +174,7 @@ class GptTrainer:
 
             global_step += 1
 
-            if global_step % 100 == 0:
+            if global_step % 10000 == 0:
                 self.weight_loader.store_checkpoint(self.gpt.state_dict(), global_step, optimizer, loss)
 
                 if phase == 'pre':
