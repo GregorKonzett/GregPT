@@ -9,7 +9,7 @@ dropout1 = 0.02
 embed_dim = 512
 num_heads = 8
 head_size = embed_dim // num_heads
-block_count = 12
+block_count = 8
 block_size = 1024
 
 def get_device():
