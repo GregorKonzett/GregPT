@@ -22,7 +22,7 @@ try:
 
     for currentArgument, currentValue in arguments:
         if currentArgument == "--pre":
-            dataset_loader = GCPStorageDatasetLoader("HuggingFaceFW/fineweb", "CC-MAIN-2025-26")
+            dataset_loader = GCPStorageDatasetLoader("HuggingFaceFW/fineweb", "sample-100BT")
             iters = int(currentValue)
             print("Pre-training with streaming input")
             data = dataset_loader.streaming_load_data("train")
@@ -32,18 +32,18 @@ try:
             dataset_loader = GCPStorageDatasetLoader("HuggingFaceTB/smol-smoltalk")
             iters = int(currentValue)
             train_data_list = [
-                data for data in dataset_loader.get_train_data("post").split(TikTokenTokenizer.eos_token_str)
+                data for data in dataset_loader.get_train_data("post").split(TikTokenTokenizer.end_of_chat_str)
                 if data.strip()
             ]
             training_data = [
-                torch.tensor(tokenizer.encode(data + TikTokenTokenizer.eos_token_str), dtype=torch.long) for data in train_data_list
+                torch.tensor(tokenizer.encode(data), dtype=torch.long) for data in train_data_list
             ]
             test_data_list = [
-                data for data in dataset_loader.get_val_data("post", "test").split(TikTokenTokenizer.eos_token_str)
+                data for data in dataset_loader.get_val_data("post", "test").split(TikTokenTokenizer.end_of_chat_str)
                 if data.strip()
             ]
             test_data = [
-                torch.tensor(tokenizer.encode(data + TikTokenTokenizer.eos_token_str), dtype=torch.long) for data in test_data_list
+                torch.tensor(tokenizer.encode(data), dtype=torch.long) for data in test_data_list
             ]
 
             trainer.post_train(iters, training_data, test_data, True)

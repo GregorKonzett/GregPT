@@ -77,16 +77,18 @@ class DatasetLoader:
             full_out = ""
 
             for turn in chat:
+                is_assistant = False
                 if turn["role"] == "system":
                     full_out += TikTokenTokenizer.system_token_str + '\n'
                 elif turn["role"] == "user":
                     full_out += TikTokenTokenizer.user_token_str + '\n'
                 else:
                     full_out += TikTokenTokenizer.assistant_token_str + '\n'
+                    is_assistant = True
 
-                full_out += turn["content"] + '\n'
+                full_out += turn["content"].rstrip() + (TikTokenTokenizer.eos_token_str + '\n' if is_assistant else '\n')
 
-            full_out += TikTokenTokenizer.eos_token_str
+            full_out += TikTokenTokenizer.end_of_chat_str + '\n'
 
             out.append(full_out)
 

@@ -5,7 +5,7 @@ from model.GptModel import GptModel, block_size, get_device
 from tokenizer.TikTokenTokenizer import TikTokenTokenizer
 from weights.WeightLoader import WeightLoader
 
-batch_size = 32
+batch_size = 8
 learning_rate = 3e-4
 eval_iters = 200
 

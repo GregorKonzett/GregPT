@@ -7,12 +7,14 @@ class TikTokenTokenizer:
     user_token_str = "<|user|>"
     assistant_token_str = "<|assistant|>"
     end_of_text_str = "<|endoftext|>"
+    end_of_chat_str = "<|endofchat|>"
 
     special_token_strs = {
         eos_token_str,
         system_token_str,
         user_token_str,
         assistant_token_str,
+        end_of_chat_str
     }
 
     def __init__(self):
@@ -28,6 +30,7 @@ class TikTokenTokenizer:
                 self.system_token_str: base.max_token_value + 2,
                 self.user_token_str: base.max_token_value + 3,
                 self.assistant_token_str: base.max_token_value + 4,
+                self.end_of_chat_str: base.max_token_value + 5,
             },
         )
 
