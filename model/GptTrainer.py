@@ -129,7 +129,7 @@ class GptTrainer:
                 else:
                     raise ValueError(f"phase should be pre or post")
 
-                logits, loss = self.gpt(X, Y)
+                logits, loss, _ = self.gpt(X, Y)
                 losses[k] = loss.item()
             out[split] = losses.mean()
         self.gpt.train()
@@ -166,7 +166,7 @@ class GptTrainer:
             else:
               raise ValueError("phase should be pre or post")
 
-            logits, loss = self.gpt(xb, yb)
+            logits, loss, _ = self.gpt(xb, yb)
 
             optimizer.zero_grad()
             loss.backward()
@@ -174,7 +174,7 @@ class GptTrainer:
 
             global_step += 1
 
-            if global_step % 10000 == 0:
+            if global_step % 1000 == 0:
                 self.weight_loader.store_checkpoint(self.gpt.state_dict(), global_step, optimizer, loss)
 
                 if phase == 'pre':
