@@ -26,7 +26,7 @@ try:
             iters = int(currentValue)
             print("Pre-training with streaming input")
             data = dataset_loader.streaming_load_data("train")
-            data = data.skip(2_100_000)
+            data = data.skip(4_100_000)
             trainer.pre_train(iters, data, True)
         elif currentArgument == "--post":
             dataset_loader = GCPStorageDatasetLoader("HuggingFaceTB/smol-smoltalk")
