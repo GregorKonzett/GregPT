@@ -8,6 +8,8 @@ from weights.WeightLoader import WeightLoader
 batch_size = 8
 learning_rate = 3e-4
 eval_iters = 200
+betas = (0.9, 0.95)
+weight_decay = (0.1, 0.0)
 
 class GptTrainer:
     def __init__(self, gpt: GptModel, weight_loader: WeightLoader, tokenizer: TikTokenTokenizer):
@@ -18,12 +20,29 @@ class GptTrainer:
         self.training_data = None
         self.eval_data = None
         self.buffer = []
+        self.rows_consumed = 0
+
+    def find_decay_groups(self):
+        decay = []
+        no_decay = []
+
+        for name, param in self.gpt.named_parameters():
+            if not param.requires_grad:
+                continue
+
+            if param.ndim >= 2 and "token_embedding_table" not in name:
+                decay.append(param)
+            else:
+                no_decay.append(param)
+
+        return decay, no_decay
 
     def get_batch(self):
         data = self.training_data
         needed_tokens = batch_size * block_size + 1
 
         while len(self.buffer) < needed_tokens:
+            self.rows_consumed += 1
             next_chunk = next(data)["text"] + '\n' + TikTokenTokenizer.eos_token_str
             enc_chunk = self.tokenizer.encode(next_chunk)
             self.buffer.extend(enc_chunk)
@@ -138,27 +157,38 @@ class GptTrainer:
     def pre_train(self, iters, training_data, load_checkpoint: bool = False):
         print(f"Pre-training with {iters} iterations")
 
-        self.training_data = iter(training_data)
-
-        self.__train("pre", iters, load_checkpoint)
+        self.__train("pre", training_data, iters, load_checkpoint)
 
     def post_train(self, iters, training_data: list[Tensor], eval_data: list[Tensor], load_checkpoint=False):
         print(f"Post-training with {iters} iterations")
 
-        self.training_data = training_data
         self.eval_data = eval_data
 
-        self.__train("post", iters, load_checkpoint)
+        self.__train("post", training_data, iters, load_checkpoint)
 
-    def __train(self, phase, iters, load_checkpoint: bool = False):
-        optimizer = torch.optim.Adam(self.gpt.parameters(), lr=learning_rate)
+    def __train(self, phase, training_data, iters, load_checkpoint: bool = False):
+        decay, no_decay = self.find_decay_groups()
+
+        optimizer = torch.optim.AdamW(
+            [
+                {"params": decay, "weight_decay": weight_decay[0]},
+                {"params": no_decay, "weight_decay": weight_decay[1]},
+            ],
+            lr=learning_rate,
+            betas=(0.9, 0.95),
+        )
 
         global_step = 0
 
         if load_checkpoint:
-            global_step = self.weight_loader.load_checkpoint(self.gpt, optimizer)
+            global_step, rows_consumed = self.weight_loader.load_checkpoint(self.gpt, optimizer)
+            self.rows_consumed = rows_consumed
+            training_data = training_data.skip(rows_consumed)
+            training_data = iter(training_data)
 
-        for iter in range(iters):
+        self.training_data = training_data
+
+        for i in range(iters):
             if phase == 'pre':
                 xb, yb = self.get_batch()
             elif phase == 'post':
@@ -175,10 +205,10 @@ class GptTrainer:
             global_step += 1
 
             if global_step % 1000 == 0:
-                self.weight_loader.store_checkpoint(self.gpt.state_dict(), global_step, optimizer, loss)
+                self.weight_loader.store_checkpoint(self.gpt.state_dict(), global_step, optimizer, self.rows_consumed, loss)
 
                 if phase == 'pre':
-                    print(f"step {iter}: train loss {loss.item():.4f}")
+                    print(f"step {i}: train loss {loss.item():.4f}")
                 else:
                     losses = self.estimate_loss(phase)
-                    print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+                    print(f"step {i}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")

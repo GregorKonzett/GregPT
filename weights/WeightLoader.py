@@ -11,15 +11,16 @@ class WeightLoader:
     def load_checkpoint(self, gpt: GptModel, optimizer=None):
         pass
 
-    def store_checkpoint(self, state_dict, global_step, optimizer, loss=None):
+    def store_checkpoint(self, state_dict, global_step, optimizer, rows_consumed, loss=None):
         pass
 
-    def store(self, state_dict, global_step, optimizer, loss=None):
+    def store(self, state_dict, global_step, optimizer, rows_consumed, loss=None):
         checkpoint = {
             "global_step": global_step,
             "model_state_dict": state_dict,
             "optimizer_state_dict": optimizer.state_dict(),
             "rng_state": torch.get_rng_state(),
+            "rows_consumed": rows_consumed,
         }
 
         if torch.cuda.is_available():
@@ -52,8 +53,10 @@ class WeightLoader:
                 state.cpu() for state in checkpoint["cuda_rng_state_all"]
             ])
 
+        rows_consumed = checkpoint["rows_consumed"]
+
         gpt.train()
 
         print("Checkpoint restored")
 
-        return checkpoint.get("global_step", 0)
+        return checkpoint.get("global_step", 0), rows_consumed
