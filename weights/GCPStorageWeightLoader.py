@@ -1,5 +1,4 @@
 import os
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 import torch
@@ -16,7 +15,7 @@ class GCPStorageWeightLoader(WeightLoader):
         self.storage_client = storage.Client()
         self.bucket_name = "gregpt-weights"
         self.blob_name = "weights.pt"
-        self.tmp_file = os.path.join(tempfile.gettempdir(), "gregpt_weights.pt")
+        self.tmp_file = "./data/gregpt_weights.pt"
         self.model_weight_path = self.tmp_file
         self.bucket = self.storage_client.bucket(self.bucket_name)
 
@@ -32,27 +31,26 @@ class GCPStorageWeightLoader(WeightLoader):
         blob.download_to_filename(self.tmp_file)
 
     def load_checkpoint(self, gpt, optimizer=None):
-        if not self.__blob_exists():
-            print("No checkpoint found")
-            return 0, 0
+        if not os.path.exists(self.tmp_file):
+            if not self.__blob_exists():
+                print("No checkpoint found")
+                return 0, 0, 0
 
-        print(f"Loading weights from checkpoint {self.bucket_name}/{self.blob_name}")
-        self.__load_blob()
+            print(f"Loading weights from checkpoint {self.bucket_name}/{self.blob_name}")
+            self.__load_blob()
+        else:
+            print("Loading weights from local checkpoint")
 
-        try:
-            checkpoint = torch.load(
-                self.tmp_file,
-                weights_only=True,
-                map_location=self.device,
-            )
-        finally:
-            if os.path.exists(self.tmp_file):
-                os.remove(self.tmp_file)
+        checkpoint = torch.load(
+            self.tmp_file,
+            weights_only=True,
+            map_location=self.device,
+        )
 
         return self.load(gpt, optimizer, checkpoint)
 
-    def store_checkpoint(self, state_dict, global_step, optimizer, rows_consumed, loss=None):
-        self.store(state_dict, global_step, optimizer, rows_consumed, loss)
+    def store_checkpoint(self, state_dict, global_step, optimizer, rows_consumed, tokens_seen, lr, train_loss=None, val_loss=None):
+        self.store(state_dict, global_step, optimizer, rows_consumed, tokens_seen, lr, train_loss, val_loss)
         blob = self.bucket.blob(self.blob_name)
 
         def upload_file():
@@ -63,4 +61,4 @@ class GCPStorageWeightLoader(WeightLoader):
                 if os.path.exists(self.tmp_file):
                     os.remove(self.tmp_file)
 
-        _upload_executor.submit(upload_file)
+        # _upload_executor.submit(upload_file)

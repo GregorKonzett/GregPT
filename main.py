@@ -1,6 +1,6 @@
 from dataset.GCPStorageDatasetLoader import GCPStorageDatasetLoader
 from model.GptModel import GptModel, get_device
-from model.GptTrainer import GptTrainer
+from training.GptTrainer import GptTrainer
 import torch
 from tokenizer.TikTokenTokenizer import TikTokenTokenizer
 import getopt, sys
