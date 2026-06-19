@@ -130,6 +130,7 @@ class GptTrainer:
                     "event": "train",
                     "tokens_seen": tokens_seen,
                     "train_loss": step_loss / gradient_accumulation_steps,
+                    "rows_consumed": rows_consumed,
                     "lr": optimizer.param_groups[0]['lr'],
                 })
                 print(f"{global_step}: {tokens_seen}\t{step_loss / gradient_accumulation_steps:.4f}\t{optimizer.param_groups[0]['lr']}")
@@ -144,6 +145,7 @@ class GptTrainer:
                     "tokens_seen": tokens_seen,
                     "train_loss": train_loss.item(),
                     "val_loss": val_los.item(),
+                    "rows_consumed": rows_consumed,
                     "lr": optimizer.param_groups[0]['lr'],
                 })
 

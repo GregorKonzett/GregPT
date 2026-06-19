@@ -50,8 +50,6 @@ class BatchCreator:
         self.pre_data["train"] = BatchCreator.DataDescriptor(iter(train_dataset))
         self.pre_data["val"] = BatchCreator.DataDescriptor(val_dataset)
 
-        print(f"VALIDATION LENGTH {len(self.pre_data['val'].data)}")
-
     def set_post_data(self, split, data, skip_rows):
         self.post_data[split] = BatchCreator.DataDescriptor(data)
 
