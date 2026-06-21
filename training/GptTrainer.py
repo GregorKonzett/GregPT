@@ -185,4 +185,4 @@ class GptTrainer:
 
                 train_losses = torch.zeros(iters_between_val)
 
-                print(f"{global_step}: train loss {train_loss:.4f}, val loss {val_los:.4f}")
+                # print(f"{global_step}: train loss {train_loss:.4f}, val loss {val_los:.4f}")
