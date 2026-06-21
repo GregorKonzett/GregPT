@@ -1,5 +1,6 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import torch
 from google.cloud import storage
@@ -15,7 +16,13 @@ class GCPStorageWeightLoader(WeightLoader):
         self.storage_client = storage.Client()
         self.bucket_name = "gregpt-weights"
         self.blob_name = "weights.pt"
-        self.tmp_file = "./data/gregpt_weights.pt"
+
+        # 1. Define your file path
+        self.tmp_file = Path("./data/gregpt_weights.pt")
+
+        # 2. Create the parent directory if it doesn't exist
+        self.tmp_file.parent.mkdir(parents=True, exist_ok=True)
+
         self.model_weight_path = self.tmp_file
         self.bucket = self.storage_client.bucket(self.bucket_name)
 
