@@ -30,7 +30,7 @@ class GCPStorageWeightLoader(WeightLoader):
         blob = self.bucket.blob(self.blob_name)
         blob.download_to_filename(self.tmp_file)
 
-    def load_checkpoint(self, gpt, optimizer=None):
+    def load_checkpoint(self, gpt, optimizer=None, scheduler=None):
         if not os.path.exists(self.tmp_file):
             if not self.__blob_exists():
                 print("No checkpoint found")
@@ -47,10 +47,10 @@ class GCPStorageWeightLoader(WeightLoader):
             map_location=self.device,
         )
 
-        return self.load(gpt, optimizer, checkpoint)
+        return self.load(gpt, optimizer, scheduler, checkpoint)
 
-    def store_checkpoint(self, state_dict, global_step, optimizer, rows_consumed, tokens_seen, lr, train_loss=None, val_loss=None):
-        self.store(state_dict, global_step, optimizer, rows_consumed, tokens_seen, lr, train_loss, val_loss)
+    def store_checkpoint(self, state_dict, global_step, optimizer, scheduler, rows_consumed, tokens_seen, lr, train_loss=None, val_loss=None):
+        self.store(state_dict, global_step, optimizer, scheduler, rows_consumed, tokens_seen, lr, train_loss, val_loss)
         blob = self.bucket.blob(self.blob_name)
 
         def upload_file():

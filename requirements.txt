@@ -3,3 +3,5 @@ numpy
 datasets
 tiktoken
 google-cloud-storage
+pandas
+matplotlib

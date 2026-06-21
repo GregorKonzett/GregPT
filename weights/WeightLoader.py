@@ -8,13 +8,13 @@ class WeightLoader:
         self.device = get_device()
         self.model_weight_path = "./data/weights.pt"
 
-    def load_checkpoint(self, gpt: GptModel, optimizer=None):
+    def load_checkpoint(self, gpt: GptModel, optimizer=None, scheduler=None):
         pass
 
-    def store_checkpoint(self, state_dict, global_step, optimizer, rows_consumed, tokens_seen, lr, train_loss=None, val_loss=None):
+    def store_checkpoint(self, state_dict, global_step, optimizer, scheduler, rows_consumed, tokens_seen, lr, train_loss=None, val_loss=None):
         pass
 
-    def store(self, state_dict, global_step, optimizer, rows_consumed, tokens_seen, lr, train_loss=None, val_loss=None):
+    def store(self, state_dict, global_step, optimizer, scheduler, rows_consumed, tokens_seen, lr, train_loss=None, val_loss=None):
         checkpoint = {
             "global_step": global_step,
             "model_state_dict": state_dict,
@@ -23,6 +23,7 @@ class WeightLoader:
             "lr": lr,
             "rows_consumed": rows_consumed,
             "tokens_seen": tokens_seen,
+            "scheduler_state_dict": scheduler.state_dict(),
         }
 
         if torch.cuda.is_available():
@@ -41,7 +42,7 @@ class WeightLoader:
 
         print("Checkpoint saved")
 
-    def load(self, gpt, optimizer, checkpoint):
+    def load(self, gpt, optimizer, scheduler, checkpoint):
         gpt.load_state_dict(checkpoint["model_state_dict"])
 
         if optimizer is not None:
@@ -57,6 +58,9 @@ class WeightLoader:
             torch.cuda.set_rng_state_all([
                 state.cpu() for state in checkpoint["cuda_rng_state_all"]
             ])
+
+        if "scheduler_state_dict" in checkpoint and scheduler is not None:
+            scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
         rows_consumed = checkpoint["rows_consumed"]
         tokens_seen = checkpoint["tokens_seen"]

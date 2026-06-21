@@ -49,7 +49,7 @@ try:
         elif currentArgument == "--infer":
             query = currentValue
             print(f"Inference with input: {query}")
-            query = TikTokenTokenizer.user_token_str + "\n" + query + "\n" + TikTokenTokenizer.assistant_token_str + "\n"
+            # query = TikTokenTokenizer.user_token_str + "\n" + query + "\n" + TikTokenTokenizer.assistant_token_str + "\n"
             weight_loader.load_checkpoint(gpt)
             encoded_query = torch.tensor([tokenizer.encode(query)], dtype=torch.long, device=get_device())
             out = gpt.generate(encoded_query)

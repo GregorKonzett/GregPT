@@ -1,3 +1,5 @@
+import math
+
 import torch
 from torch import Tensor
 from model.GptModel import GptModel, block_size, get_device
@@ -9,11 +11,24 @@ from weights.WeightLoader import WeightLoader
 batch_size = 8
 gradient_accumulation_steps = 4
 learning_rate = 3e-4
+min_learning_rate = 3e-5
 eval_iters = 50
 betas = (0.9, 0.95)
 weight_decay = (0.1, 0.0)
 iters_between_val = 1000
 iters_between_log = 100
+max_decay_steps = 10_000
+
+
+def lr_lambda(step):
+    if step >= max_decay_steps:
+        return min_learning_rate / learning_rate
+
+    progress = step / max_decay_steps
+    cosine = 0.5 * (1.0 + math.cos(math.pi * progress))
+    lr = min_learning_rate + cosine * (learning_rate - min_learning_rate)
+
+    return lr / learning_rate
 
 class GptTrainer:
     def __init__(self, gpt: GptModel, weight_loader: WeightLoader, tokenizer: TikTokenTokenizer):
@@ -83,8 +98,14 @@ class GptTrainer:
 
         global_step = 0
 
+        # Add optimizer learning rate decay that clamps at min_learning_rate
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer,
+            lr_lambda=lr_lambda,
+        )
+
         if load_checkpoint:
-            global_step, rows_consumed, tokens_seen = self.weight_loader.load_checkpoint(self.gpt, optimizer)
+            global_step, rows_consumed, tokens_seen = self.weight_loader.load_checkpoint(self.gpt, optimizer, scheduler)
         else:
             rows_consumed = 0
             tokens_seen = 0
@@ -121,6 +142,7 @@ class GptTrainer:
 
             torch.nn.utils.clip_grad_norm_(self.gpt.parameters(), 1.0)
             optimizer.step()
+            scheduler.step()
             global_step += 1
             train_losses[i % iters_between_val] = step_loss / gradient_accumulation_steps
 
@@ -153,6 +175,7 @@ class GptTrainer:
                     self.gpt.state_dict(),
                     global_step,
                     optimizer,
+                    scheduler,
                     rows_consumed,
                     tokens_seen,
                     optimizer.param_groups[0]['lr'],
