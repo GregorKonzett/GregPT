@@ -61,4 +61,4 @@ class GCPStorageWeightLoader(WeightLoader):
                 if os.path.exists(self.tmp_file):
                     os.remove(self.tmp_file)
 
-        # _upload_executor.submit(upload_file)
+        _upload_executor.submit(upload_file)
