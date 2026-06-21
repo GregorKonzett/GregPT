@@ -8,7 +8,7 @@ from training.ProgressLogger import ProgressLogger
 from training.BatchCreator import BatchCreator
 from weights.WeightLoader import WeightLoader
 
-batch_size = 8
+batch_size = 4
 gradient_accumulation_steps = 4
 learning_rate = 3e-4
 min_learning_rate = 3e-5
