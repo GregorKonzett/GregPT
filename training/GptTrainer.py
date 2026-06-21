@@ -155,7 +155,7 @@ class GptTrainer:
                     "rows_consumed": rows_consumed,
                     "lr": optimizer.param_groups[0]['lr'],
                 })
-                print(f"{global_step}: {tokens_seen}\t{step_loss / gradient_accumulation_steps:.4f}\t{optimizer.param_groups[0]['lr']}")
+                # print(f"{global_step}: {tokens_seen}\t{step_loss / gradient_accumulation_steps:.4f}\t{optimizer.param_groups[0]['lr']}")
 
             if global_step % iters_between_val == 0:
                 train_loss = train_losses.mean()
