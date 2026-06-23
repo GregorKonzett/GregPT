@@ -9,11 +9,6 @@ with open(file, "r") as f:
 training_lines = progress[progress["event"] == "train"]
 validation_lines = progress[progress["event"] == "val"]
 
-# plt.legend()
-#
-# plt.show()
-
-
 fig, ax1 = plt.subplots()
 
 color = 'tab:red'

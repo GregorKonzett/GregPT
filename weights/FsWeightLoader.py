@@ -9,7 +9,7 @@ class FsWeightLoader(WeightLoader):
     def __init__(self):
         super().__init__()
 
-    def load_checkpoint(self, gpt, optimizer=None):
+    def load_checkpoint(self, gpt, load_rng, optimizer=None):
         if not os.path.exists(self.model_weight_path):
             print("No checkpoint found")
             return 0
@@ -20,7 +20,7 @@ class FsWeightLoader(WeightLoader):
             map_location=self.device,
         )
 
-        return self.load(gpt, optimizer, checkpoint)
+        return self.load(gpt, load_rng, optimizer, checkpoint)
 
     def store_checkpoint(self, state_dict, global_step, optimizer, loss=None):
         self.store(state_dict, global_step, optimizer, loss)

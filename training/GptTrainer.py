@@ -10,14 +10,14 @@ from weights.WeightLoader import WeightLoader
 
 batch_size = 4
 gradient_accumulation_steps = 4
-learning_rate = 3e-4
+learning_rate = 1e-4
 min_learning_rate = 3e-5
 eval_iters = 50
 betas = (0.9, 0.95)
 weight_decay = (0.1, 0.0)
 iters_between_val = 1000
 iters_between_log = 100
-max_decay_steps = 10_000
+max_decay_steps = 5_000
 
 
 def lr_lambda(step):
@@ -34,7 +34,7 @@ class GptTrainer:
     def __init__(self, gpt: GptModel, weight_loader: WeightLoader, tokenizer: TikTokenTokenizer):
         self.device = get_device()
         self.tokenizer = tokenizer
-        self.gpt = gpt.to(self.device)
+        self.gpt = gpt
         self.weight_loader = weight_loader
         self.batch_creator = BatchCreator(tokenizer, self.device)
         self.progress_loader = ProgressLogger("./data/progress.jsonl")
@@ -105,7 +105,7 @@ class GptTrainer:
         )
 
         if load_checkpoint:
-            global_step, rows_consumed, tokens_seen = self.weight_loader.load_checkpoint(self.gpt, optimizer, scheduler)
+            global_step, rows_consumed, tokens_seen = self.weight_loader.load_checkpoint(self.gpt, True, optimizer, scheduler)
         else:
             rows_consumed = 0
             tokens_seen = 0
