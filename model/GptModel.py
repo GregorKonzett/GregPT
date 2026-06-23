@@ -1,3 +1,6 @@
+import asyncio
+from typing import Any
+
 from torch import nn
 import torch
 from torch.functional import F
@@ -183,19 +186,47 @@ class GptModel(nn.Module):
         probs = F.softmax(logits, dim=-1)
         return torch.multinomial(probs, num_samples=1)  # (B, 1)
 
+    def prefill_cache(self, idx, temperature):
+        caches = None
+
+        logits, _, caches = self(idx, kv_caches=caches, start_pos=0, use_cache=True)
+        logits = logits[:, -1, :] / temperature
+        idx_next = self.sample(logits)
+        prompt_len = idx.shape[1]
+
+        return logits, caches, prompt_len, idx_next
+
+    @torch.no_grad()
+    async def async_generate(self, idx, resp_queue: asyncio.Queue, max_new_tokens = 512, temperature = 0.7):
+        assert idx.shape[1] <= self.block_size
+
+        # Build cache first
+        logits, caches, prompt_len, idx_next = self.prefill_cache(idx, temperature)
+        next_token = idx_next[0, 0].item()
+
+        abs_idx = prompt_len
+        i = 1
+
+        while i < max_new_tokens and not self.tokenizer.is_eos(next_token):
+            await resp_queue.put(self.tokenizer.decode([next_token]))
+            logits, _, caches = self(idx_next, kv_caches=caches, start_pos=abs_idx, use_cache=True)
+            logits = logits[:, -1, :] / temperature
+            idx_next = self.sample(logits)
+            next_token = idx_next[0, 0].item()
+
+            abs_idx += 1
+            i += 1
+
+
     @torch.no_grad()
     def generate(self, idx, max_new_tokens = 512, temperature = 0.7):
         assert idx.shape[1] <= self.block_size
         self.eval()
 
-        caches = None
-
         # Build cache first
-        logits, _, caches = self(idx, kv_caches = caches, start_pos = 0, use_cache = True)
-        logits = logits[:, -1, :] / temperature
-        idx_next = self.sample(logits)
+        logits, caches, prompt_len, idx_next = self.prefill_cache(idx, temperature)
         next_token = idx_next[0, 0].item()
-        prompt_len = idx.shape[1]
+
         idx = torch.cat([idx, idx_next], dim=1)
 
         abs_idx = prompt_len

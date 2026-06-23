@@ -24,24 +24,19 @@ class InferenceService:
     async def _worker_loop(self):
         while True:
             job = await self.inference_queue.get()
-            res = await asyncio.to_thread(self.infer, job.prompt)
+            await asyncio.to_thread(self.infer, job.prompt, job.resp_queue)
+            await job.resp_queue.put(None)
 
-            if not job.future.cancelled():
-                job.future.set_result(res)
-
-    def infer(self, prompt: str) -> str:
+    def infer(self, prompt: str, resp_queue: asyncio.Queue):
         encoded_query = torch.tensor([self.tokenizer.encode(prompt)], dtype=torch.long, device=get_device())
-        out = self.gpt.generate(encoded_query)
-        out = self.tokenizer.decode(out[0].cpu().tolist()).strip()
-        return out
+        asyncio.run(self.gpt.async_generate(encoded_query, resp_queue=resp_queue))
 
 
     async def enqueue(self, req: InferenceRequest):
-        loop = asyncio.get_running_loop()
-        future = loop.create_future()
+        resp_queue = asyncio.Queue()
 
-        await self.inference_queue.put(InferenceJob(prompt=req.prompt, future=future))
+        await self.inference_queue.put(InferenceJob(prompt=req.prompt, resp_queue=resp_queue))
 
-        return await future
+        return resp_queue
 
 

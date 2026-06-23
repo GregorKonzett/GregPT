@@ -13,4 +13,4 @@ class InferenceRequest(BaseModel):
 @dataclass
 class InferenceJob:
     prompt: str
-    future: asyncio.Future
+    resp_queue: asyncio.Queue
