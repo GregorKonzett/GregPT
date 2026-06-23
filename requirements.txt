@@ -5,3 +5,5 @@ tiktoken
 google-cloud-storage
 pandas
 matplotlib
+fastapi[standard]
+uvicorn

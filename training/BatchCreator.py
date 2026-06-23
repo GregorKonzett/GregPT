@@ -53,6 +53,16 @@ class BatchCreator:
     def set_post_data(self, split, data, skip_rows):
         self.post_data[split] = BatchCreator.DataDescriptor(data)
 
+    def reset_data(self, phase, split):
+        if phase == 'pre':
+            self.pre_data[split].buffer = []
+            self.pre_data[split].rows_consumed = 0
+        elif phase == 'post':
+            self.post_data[split].buffer = []
+            self.post_data[split].rows_consumed = 0
+        else:
+            raise ValueError(f"phase should be pre or post")
+
     def get_pre_batch(self, split, batch_size, block_size):
         assert split in self.pre_data.keys()
 

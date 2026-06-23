@@ -58,6 +58,7 @@ class GptTrainer:
     def estimate_val_loss(self, phase):
         self.gpt.eval()
         losses = torch.zeros(eval_iters)
+        self.batch_creator.reset_data(phase, "val")
         for k in range(eval_iters):
             if phase == 'pre':
                 X, Y, _ = self.batch_creator.get_pre_batch("val", batch_size, block_size)
