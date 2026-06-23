@@ -15,8 +15,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.get("/")
-async def get_inference(req: InferenceRequest) -> InferenceResponse:
+@app.post("/inference")
+async def infer(req: InferenceRequest) -> InferenceResponse:
     print(f"Sending {req.prompt} to the LLM")
 
     res = await app.state.inference_service.enqueue(req)
