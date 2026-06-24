@@ -17,7 +17,7 @@ betas = (0.9, 0.95)
 weight_decay = (0.1, 0.0)
 iters_between_val = 1000
 iters_between_log = 100
-max_decay_steps = 5_000
+max_decay_steps = 10_000
 
 
 def lr_lambda(step):
