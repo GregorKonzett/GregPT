@@ -59,8 +59,8 @@ class WeightLoader:
                 state.cpu() for state in checkpoint["cuda_rng_state_all"]
             ])
 
-        # if "scheduler_state_dict" in checkpoint and scheduler is not None:
-        #     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        if "scheduler_state_dict" in checkpoint and scheduler is not None:
+            scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
         rows_consumed = checkpoint["rows_consumed"]
         tokens_seen = checkpoint["tokens_seen"]

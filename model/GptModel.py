@@ -154,7 +154,7 @@ class GptModel(nn.Module):
         self.linear = nn.Linear(self.embed_dim, self.vocab_size)
         self.ln_norm = nn.LayerNorm(self.embed_dim)
 
-    def forward(self, x, targets=None, kv_caches = None, start_pos = 0, use_cache = False):
+    def forward(self, x, targets=None, kv_caches = None, start_pos = 0, use_cache = False, loss_reduction="mean"):
         B, T = x.shape
 
         new_caches = [] if use_cache else None
@@ -178,7 +178,7 @@ class GptModel(nn.Module):
             B, T, C = logits.shape
             logits = logits.view(B * T, C)
             targets = targets.view(B * T)
-            loss = F.cross_entropy(logits, targets)
+            loss = F.cross_entropy(logits, targets, ignore_index=-100, reduction=loss_reduction)
 
         return logits, loss, new_caches
 

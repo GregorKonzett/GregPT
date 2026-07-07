@@ -57,7 +57,9 @@ class GptTrainer:
     @torch.no_grad()
     def estimate_val_loss(self, phase):
         self.gpt.eval()
-        losses = torch.zeros(eval_iters)
+        total_loss_sum = 0.0
+        total_valid_labels = 0
+
         self.batch_creator.reset_data(phase, "val")
         for k in range(eval_iters):
             if phase == 'pre':
@@ -67,11 +69,17 @@ class GptTrainer:
             else:
                 raise ValueError(f"phase should be pre or post")
 
-            logits, loss, _ = self.gpt(X, Y)
-            losses[k] = loss.item()
+            _, loss, _ = self.gpt(X, Y, loss_reduction="sum")
+            valid_labels = (Y != -100).sum().item()
+            if valid_labels == 0:
+                raise ValueError("Batch has no valid labels")
+
+            total_loss_sum += loss.item()
+            total_valid_labels += valid_labels
+
         self.gpt.train()
 
-        return losses.mean()
+        return torch.tensor(total_loss_sum / total_valid_labels)
 
     def pre_train(self, iters, training_data, load_checkpoint: bool = False):
         print(f"Pre-training with {iters} iterations")
@@ -82,8 +90,9 @@ class GptTrainer:
         print(f"Post-training with {iters} iterations")
 
         self.batch_creator.set_post_data("val", eval_data, 0)
+        self.weight_loader.load_checkpoint(self.gpt, load_rng=False)
 
-        self.__train("post", training_data, iters, load_checkpoint)
+        self.__train("post", training_data, iters, False)
 
     def __train(self, phase, training_data, iters, load_checkpoint: bool = False):
         decay, no_decay = self.find_decay_groups()
@@ -121,6 +130,8 @@ class GptTrainer:
         for i in range(iters):
             optimizer.zero_grad()
             step_loss = 0.0
+            step_loss_sum = 0.0
+            step_valid_labels = 0
 
             for micro_step in range(gradient_accumulation_steps):
                 if phase == 'pre':
@@ -133,30 +144,39 @@ class GptTrainer:
 
                 rows_consumed += rows_consumed_tmp
 
-                logits, loss, _ = self.gpt(xb, yb)
+                logits, loss, _ = self.gpt(xb, yb, loss_reduction="sum")
 
-                step_loss += loss.item()
-                loss /= gradient_accumulation_steps
+                valid_labels = (yb != -100).sum().item()
+                if valid_labels == 0:
+                    raise ValueError("Batch has no valid labels")
+
+                step_loss_sum += loss.item()
+                step_valid_labels += valid_labels
                 loss.backward()
 
+            for param in self.gpt.parameters():
+                if param.grad is not None:
+                    param.grad /= step_valid_labels
+
             tokens_seen += gradient_accumulation_steps * batch_size * block_size
+
+            step_loss = step_loss_sum / step_valid_labels
 
             torch.nn.utils.clip_grad_norm_(self.gpt.parameters(), 1.0)
             optimizer.step()
             scheduler.step()
             global_step += 1
-            train_losses[i % iters_between_val] = step_loss / gradient_accumulation_steps
+            train_losses[i % iters_between_val] = step_loss
 
             if global_step % iters_between_log == 0:
                 self.progress_loader.log({
                     "global_step": global_step,
                     "event": "train",
                     "tokens_seen": tokens_seen,
-                    "train_loss": step_loss / gradient_accumulation_steps,
+                    "train_loss": step_loss,
                     "rows_consumed": rows_consumed,
                     "lr": optimizer.param_groups[0]['lr'],
                 })
-                # print(f"{global_step}: {tokens_seen}\t{step_loss / gradient_accumulation_steps:.4f}\t{optimizer.param_groups[0]['lr']}")
 
             if global_step % iters_between_val == 0:
                 train_loss = train_losses.mean()

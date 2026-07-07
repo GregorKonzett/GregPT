@@ -116,7 +116,8 @@ class BatchCreator:
             batch = torch.randint(len(data), (1,)).item()
             tokens = data[batch]
 
-            if len(tokens) < 2:
+            # Bug fix at the moment to not train on chats that exceed the block_size
+            if len(tokens) < 2 or len(tokens) > block_size + 1:
                 continue
 
             y = tokens[1:].clone()
